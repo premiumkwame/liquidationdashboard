@@ -2,143 +2,191 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Bitget Stock Perp | Liquidity Hunter</title>
+    <title>Bitget Stock Perp Tracker | Professional Grade</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background: #0b0e11; color: #e1e3e6; font-family: ui-sans-serif, system-ui; overflow: hidden; }
-        .panel { background: #1e2026; border: 1px solid #2b2f36; border-radius: 12px; }
-        .buy-zone { border-left: 4px solid #00c087; background: linear-gradient(90deg, rgba(0,192,135,0.1) 0%, transparent); }
-        .sell-zone { border-left: 4px solid #f84960; background: linear-gradient(90deg, rgba(248,73,96,0.1) 0%, transparent); }
+        body { background: #0b0e11; color: #e1e3e6; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .glass { background: #1e2026; border: 1px solid #2b2f36; border-radius: 12px; }
+        .hunt-card { border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.05); transition: all 0.3s; }
+        .hunt-card:hover { background: rgba(59, 130, 246, 0.1); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="p-6 h-screen flex flex-col">
 
-    <header class="flex justify-between items-center mb-6 panel p-4">
+    <header class="flex justify-between items-center mb-6 glass p-4">
         <div class="flex items-center gap-3">
-            <span class="text-blue-500 text-2xl">⚡</span>
-            <h1 class="text-xl font-bold tracking-tight">BITGET <span class="text-blue-500">RADAR</span></h1>
+            <i class="fa-solid fa-microchip text-blue-500 text-2xl"></i>
+            <h1 class="text-xl font-black tracking-tight uppercase">Bitget <span class="text-blue-500">Stock Scanner</span></h1>
         </div>
         <div class="flex items-center gap-4">
-            <select id="asset-select" onchange="changeTicker(this.value)" class="bg-gray-900 border border-gray-700 px-3 py-1 rounded text-sm outline-none">
-                <option value="TSLAUSDT">TESLA (TSLA)</option>
-                <option value="NVDAUSDT">NVIDIA (NVDA)</option>
-                <option value="AAPLUSDT">APPLE (AAPL)</option>
-                <option value="MSTRUSDT">MICROSTRATEGY (MSTR)</option>
-            </select>
-            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs font-bold transition">RECONNECT</button>
-            <div id="status-tag" class="px-3 py-1 rounded-full text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/20 uppercase">Disconnected</div>
+            <div class="relative">
+                <select id="asset-list" onchange="switchAsset(this.value)" class="bg-gray-900 border border-gray-700 px-4 py-2 rounded-lg text-sm outline-none w-64 appearance-none cursor-pointer">
+                    <option>Loading All Stock Perps...</option>
+                </select>
+                <div class="absolute right-3 top-2.5 pointer-events-none text-gray-500 text-xs"><i class="fa-solid fa-chevron-down"></i></div>
+            </div>
+            <div id="status-chip" class="px-4 py-2 rounded-lg bg-red-900/20 text-red-500 text-[10px] font-bold uppercase tracking-widest border border-red-500/30">
+                <i class="fa-solid fa-circle-notch animate-spin mr-2"></i> Connecting
+            </div>
         </div>
     </header>
 
     <div class="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
-        <aside class="col-span-4 panel p-5 flex flex-col">
-            <h2 class="text-xs font-bold text-gray-500 uppercase mb-4 tracking-widest">Order Clusters (Hunts)</h2>
-            <div id="clusters" class="space-y-3 overflow-y-auto flex-1 pr-2">
-                <div class="text-xs text-gray-600 italic">Waiting for connection...</div>
+        <aside class="col-span-4 glass p-5 flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Liquidity Clusters</h2>
+                <span id="stock-count" class="bg-blue-500/10 text-blue-500 text-[10px] px-2 py-0.5 rounded border border-blue-500/20">0 STOCKS FOUND</span>
+            </div>
+            <div id="cluster-radar" class="space-y-3 overflow-y-auto flex-1 pr-2 scrollbar-hide">
+                <div class="text-center p-10 text-xs text-gray-600 italic">Analyzing all stock order books...</div>
             </div>
         </aside>
 
-        <main class="col-span-8 flex flex-col gap-6">
-            <div class="panel p-8 flex justify-between items-center bg-gradient-to-r from-blue-900/5 to-transparent">
+        <main class="col-span-8 space-y-6 flex flex-col">
+            <div class="glass p-8 flex justify-between items-center bg-gradient-to-br from-blue-900/10 to-transparent">
                 <div>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Live Mark Price</p>
-                    <h2 id="live-price" class="text-6xl font-black text-white">$---.--</h2>
+                    <p id="active-name" class="text-blue-500 text-xs font-bold uppercase tracking-widest mb-2">---</p>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Mark Price</p>
+                    <h2 id="live-price" class="text-7xl font-black text-white">$---.--</h2>
                 </div>
-                <div class="text-right">
-                    <p class="text-[10px] text-gray-500 uppercase mb-1">Funding (24h)</p>
-                    <p id="funding-val" class="text-xl font-mono text-blue-400">0.0000%</p>
+                <div class="text-right flex flex-col gap-4">
+                    <div>
+                        <p class="text-[10px] text-gray-500 uppercase mb-1">Funding Rate</p>
+                        <p id="funding-text" class="text-xl font-mono text-yellow-500">0.0000%</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-gray-500 uppercase mb-1">24h Change</p>
+                        <p id="change-text" class="text-lg font-bold">---</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-6 flex-1">
-                <div class="panel p-5 overflow-hidden">
-                    <p class="text-[10px] text-red-400 font-bold uppercase mb-4">Sell Walls (Resistance)</p>
-                    <div id="ask-book" class="space-y-1 h-64 flex flex-col-reverse justify-start"></div>
+            <div class="grid grid-cols-2 gap-6 flex-1 overflow-hidden">
+                <div class="glass p-6 flex flex-col">
+                    <p class="text-[10px] text-red-500 font-bold uppercase mb-4 tracking-tighter">Resistance (Sell Side)</p>
+                    <div id="ask-stack" class="flex-1 space-y-1 overflow-hidden flex flex-col-reverse justify-start"></div>
                 </div>
-                <div class="panel p-5 overflow-hidden">
-                    <p class="text-[10px] text-green-400 font-bold uppercase mb-4">Buy Walls (Support)</p>
-                    <div id="bid-book" class="space-y-1 h-64"></div>
+                <div class="glass p-6 flex flex-col">
+                    <p class="text-[10px] text-green-500 font-bold uppercase mb-4 tracking-tighter">Support (Buy Side)</p>
+                    <div id="bid-stack" class="flex-1 space-y-1 overflow-hidden"></div>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        let socket;
-        let symbol = 'TSLAUSDT';
+        let ws;
+        let currentSymbol = 'TSLAUSDT';
+        const stockTickers = ['TSLA', 'NVDA', 'AAPL', 'AMZN', 'MSFT', 'META', 'GOOG', 'COIN', 'MSTR', 'NFLX', 'BABA', 'AMD', 'INTC', 'PYPL', 'TSM', 'DIS', 'PYPL', 'SHOP'];
 
-        function start() {
-            // Updated to the direct V5 endpoint for Futures
-            socket = new WebSocket('wss://ws.bitget.com/v5/public/mix');
-
-            socket.onopen = () => {
-                const tag = document.getElementById('status-tag');
-                tag.innerText = "● Live Stream";
-                tag.className = "px-3 py-1 rounded-full text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 uppercase";
+        async function init() {
+            const status = document.getElementById('status-chip');
+            
+            try {
+                // Fetch ALL symbols from Bitget via proxy to avoid CORS
+                const response = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.bitget.com/api/v2/mix/market/symbols?productType=USDT-FUTURES'));
+                const raw = await response.json();
+                const data = JSON.parse(raw.contents);
                 
-                // Subscription for Mark Price and Depth
-                const msg = {
-                    op: "subscribe",
-                    args: [
-                        { instType: "USDT-FUTURES", channel: "ticker", instId: symbol },
-                        { instType: "USDT-FUTURES", channel: "books", instId: symbol }
-                    ]
-                };
-                socket.send(JSON.stringify(msg));
-            };
+                // Filter for stock perps (Usually have stock tickers or are labeled differently)
+                const stocks = data.data.filter(s => 
+                    stockTickers.some(t => s.symbol.startsWith(t)) || s.symbolName.includes('Stock')
+                );
 
-            socket.onmessage = (e) => {
-                const res = JSON.parse(e.data);
-                if (!res.data) return;
-
-                if (res.arg.channel === 'ticker') {
-                    document.getElementById('live-price').innerText = '$' + parseFloat(res.data[0].lastPr).toFixed(2);
-                    document.getElementById('funding-val').innerText = (parseFloat(res.data[0].fundingRate) * 100).toFixed(4) + '%';
-                }
-
-                if (res.arg.channel === 'books') {
-                    updateDepth(res.data[0]);
-                }
-            };
-
-            socket.onclose = () => { setTimeout(start, 2000); };
+                const selector = document.getElementById('asset-list');
+                selector.innerHTML = stocks.map(s => `<option value="${s.symbol}">${s.symbol.replace('USDT', '')} Perpetuals</option>`).join('');
+                document.getElementById('stock-count').innerText = `${stocks.length} STOCKS FOUND`;
+                
+                connectWebSocket();
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                // Fallback to basic list if API is completely blocked
+                document.getElementById('asset-list').innerHTML = '<option value="TSLAUSDT">TSLAUSDT</option><option value="NVDAUSDT">NVDAUSDT</option>';
+                connectWebSocket();
+            }
         }
 
-        function changeTicker(val) {
-            socket.close();
-            symbol = val;
-            start();
+        function connectWebSocket() {
+            ws = new WebSocket('wss://ws.bitget.com/v5/public/mix');
+
+            ws.onopen = () => {
+                const status = document.getElementById('status-chip');
+                status.innerHTML = '<i class="fa-solid fa-circle text-green-500 mr-2"></i> Live Feed';
+                status.className = status.className.replace('text-red-500', 'text-green-500');
+                
+                subscribe(currentSymbol);
+            };
+
+            ws.onmessage = (e) => {
+                const msg = JSON.parse(e.data);
+                if (!msg.data) return;
+
+                if (msg.arg.channel === 'ticker') updateUI(msg.data[0]);
+                if (msg.arg.channel === 'books') processDepth(msg.data[0]);
+            };
+
+            ws.onclose = () => setTimeout(connectWebSocket, 3000);
         }
 
-        function updateDepth(data) {
-            const bids = data.bids.slice(0, 15);
-            const asks = data.asks.slice(0, 15);
+        function subscribe(sym) {
+            ws.send(JSON.stringify({
+                "op": "subscribe",
+                "args": [
+                    { "instType": "USDT-FUTURES", "channel": "ticker", "instId": sym },
+                    { "instType": "USDT-FUTURES", "channel": "books", "instId": sym }
+                ]
+            }));
+            document.getElementById('active-name').innerText = sym;
+        }
 
-            document.getElementById('bid-book').innerHTML = bids.map(b => `<div class="flex justify-between text-[11px] font-mono text-green-500"><span>$${parseFloat(b[0]).toFixed(2)}</span><span>${parseFloat(b[1]).toFixed(1)}</span></div>`).join('');
-            document.getElementById('ask-book').innerHTML = asks.map(a => `<div class="flex justify-between text-[11px] font-mono text-red-500"><span>$${parseFloat(a[0]).toFixed(2)}</span><span>${parseFloat(a[1]).toFixed(1)}</span></div>`).join('');
+        function switchAsset(newSym) {
+            ws.send(JSON.stringify({ "op": "unsubscribe", "args": [{ "instType": "USDT-FUTURES", "channel": "ticker", "instId": currentSymbol }, { "instType": "USDT-FUTURES", "channel": "books", "instId": currentSymbol }] }));
+            currentSymbol = newSym;
+            subscribe(newSym);
+            document.getElementById('cluster-radar').innerHTML = '<div class="text-center p-10 text-xs text-gray-700 italic">Updating Radar...</div>';
+        }
 
-            // Cluster Algorithm: Identify 5x larger than average orders
+        function updateUI(d) {
+            document.getElementById('live-price').innerText = '$' + parseFloat(d.lastPr).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('funding-text').innerText = (parseFloat(d.fundingRate) * 100).toFixed(4) + '%';
+            
+            const change = (parseFloat(d.priceChangePercent) * 100).toFixed(2);
+            const changeEl = document.getElementById('change-text');
+            changeEl.innerText = (change > 0 ? '+' : '') + change + '%';
+            changeEl.className = change >= 0 ? 'text-green-500 text-lg font-bold' : 'text-red-500 text-lg font-bold';
+        }
+
+        function processDepth(d) {
+            const bids = d.bids.slice(0, 15);
+            const asks = d.asks.slice(0, 15);
+
+            document.getElementById('bid-stack').innerHTML = bids.map(b => `<div class="flex justify-between text-[11px] font-mono text-green-500/80"><span>$${parseFloat(b[0]).toFixed(2)}</span><span>${parseFloat(b[1]).toFixed(1)}</span></div>`).join('');
+            document.getElementById('ask-stack').innerHTML = asks.map(a => `<div class="flex justify-between text-[11px] font-mono text-red-500/80"><span>$${parseFloat(a[0]).toFixed(2)}</span><span>${parseFloat(a[1]).toFixed(1)}</span></div>`).join('');
+
+            // Cluster Algorithm: Identify orders 4x the average depth
             const avg = [...bids, ...asks].reduce((a, b) => a + parseFloat(b[1]), 0) / 30;
-            let clusters = [];
+            let hunts = [];
 
-            bids.forEach(b => { if(parseFloat(b[1]) > avg * 4) clusters.push({p: b[0], s: b[1], t: 'BUY HUNT', c: 'buy-zone'}); });
-            asks.forEach(a => { if(parseFloat(a[1]) > avg * 4) clusters.push({p: a[0], s: a[1], t: 'SELL HUNT', c: 'sell-zone'}); });
+            bids.forEach(b => { if(parseFloat(b[1]) > avg * 3.5) hunts.push({p: b[0], s: b[1], t: 'SUPPORT CLUSTER', c: 'border-green-500/30 bg-green-500/5'}); });
+            asks.forEach(a => { if(parseFloat(a[1]) > avg * 3.5) hunts.push({p: a[0], s: a[1], t: 'RESISTANCE WALL', c: 'border-red-500/30 bg-red-500/5'}); });
 
-            document.getElementById('clusters').innerHTML = clusters.map(z => `
-                <div class="p-4 rounded-lg panel ${z.c}">
-                    <div class="flex justify-between text-[9px] font-bold text-gray-500 mb-1">
-                        <span>${z.t} AREA</span>
-                        <span class="text-blue-500">LIQUIDITY DEPTH</span>
+            document.getElementById('cluster-radar').innerHTML = hunts.map(h => `
+                <div class="p-4 rounded-xl border ${h.c} glass">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[9px] font-black uppercase text-gray-500">${h.t}</span>
+                        <span class="text-[9px] font-bold text-blue-400">LIQUIDITY DEPTH</span>
                     </div>
                     <div class="flex justify-between items-end">
-                        <span class="text-2xl font-black">$${parseFloat(z.p).toFixed(2)}</span>
-                        <span class="text-xs">${parseFloat(z.s).toFixed(1)} Units</span>
+                        <span class="text-2xl font-black text-white">$${parseFloat(h.p).toFixed(2)}</span>
+                        <span class="text-xs font-mono text-gray-400">${parseFloat(h.s).toFixed(1)} Units</span>
                     </div>
                 </div>
-            `).join('') || '<div class="text-xs text-gray-700">Monitoring order flow...</div>';
+            `).join('') || '<div class="text-center p-10 text-[10px] text-gray-700">Scan complete: No major traps detected in immediate book.</div>';
         }
 
-        start();
+        init();
     </script>
 </body>
 </html>
