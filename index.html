@@ -2,150 +2,143 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Pro-Trade | Bitget Anti-Hunt Radar</title>
+    <title>Bitget Stock Perp | Liquidity Hunter</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0b0e11; color: #eaecef; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .glass { background: #1e2026; border: 1px solid #303339; }
-        .hunt-buy { border-left: 4px solid #00c087; background: linear-gradient(90deg, rgba(0,192,135,0.1) 0%, transparent 100%); }
-        .hunt-sell { border-left: 4px solid #f84960; background: linear-gradient(90deg, rgba(248,73,96,0.1) 0%, transparent 100%); }
+        body { background: #0b0e11; color: #e1e3e6; font-family: ui-sans-serif, system-ui; overflow: hidden; }
+        .panel { background: #1e2026; border: 1px solid #2b2f36; border-radius: 12px; }
+        .buy-zone { border-left: 4px solid #00c087; background: linear-gradient(90deg, rgba(0,192,135,0.1) 0%, transparent); }
+        .sell-zone { border-left: 4px solid #f84960; background: linear-gradient(90deg, rgba(248,73,96,0.1) 0%, transparent); }
     </style>
 </head>
 <body class="p-6 h-screen flex flex-col">
 
-    <nav class="flex justify-between items-center mb-6 glass p-4 rounded-xl">
+    <header class="flex justify-between items-center mb-6 panel p-4">
         <div class="flex items-center gap-3">
-            <i class="fa-solid fa-radar text-blue-500 text-2xl animate-pulse"></i>
-            <h1 class="text-xl font-black tracking-tight uppercase">Bitget <span class="text-blue-500">Anti-Hunt</span></h1>
+            <span class="text-blue-500 text-2xl">⚡</span>
+            <h1 class="text-xl font-bold tracking-tight">BITGET <span class="text-blue-500">RADAR</span></h1>
         </div>
-        <div class="flex gap-4">
-            <select id="symbol-selector" onchange="switchSymbol(this.value)" class="bg-gray-900 text-sm p-2 rounded border border-gray-700 outline-none">
+        <div class="flex items-center gap-4">
+            <select id="asset-select" onchange="changeTicker(this.value)" class="bg-gray-900 border border-gray-700 px-3 py-1 rounded text-sm outline-none">
                 <option value="TSLAUSDT">TESLA (TSLA)</option>
                 <option value="NVDAUSDT">NVIDIA (NVDA)</option>
                 <option value="AAPLUSDT">APPLE (AAPL)</option>
                 <option value="MSTRUSDT">MICROSTRATEGY (MSTR)</option>
-                <option value="COINUSDT">COINBASE (COIN)</option>
             </select>
-            <div id="status" class="px-4 py-2 rounded bg-red-900/20 text-red-500 text-[10px] font-bold uppercase tracking-widest border border-red-500/30">
-                ● Offline
-            </div>
+            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs font-bold transition">RECONNECT</button>
+            <div id="status-tag" class="px-3 py-1 rounded-full text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/20 uppercase">Disconnected</div>
         </div>
-    </nav>
+    </header>
 
     <div class="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
-        <aside class="col-span-4 glass rounded-xl p-5 flex flex-col overflow-hidden">
-            <h2 class="text-xs font-bold text-gray-500 uppercase mb-4 tracking-widest">Detected Liquidity Clusters</h2>
-            <div id="cluster-list" class="space-y-3 overflow-y-auto flex-1 pr-2">
-                <div class="text-xs text-gray-600 italic">Waiting for market data...</div>
+        <aside class="col-span-4 panel p-5 flex flex-col">
+            <h2 class="text-xs font-bold text-gray-500 uppercase mb-4 tracking-widest">Order Clusters (Hunts)</h2>
+            <div id="clusters" class="space-y-3 overflow-y-auto flex-1 pr-2">
+                <div class="text-xs text-gray-600 italic">Waiting for connection...</div>
             </div>
         </aside>
 
-        <main class="col-span-8 space-y-6">
-            <div class="glass p-8 rounded-xl flex justify-between items-center">
+        <main class="col-span-8 flex flex-col gap-6">
+            <div class="panel p-8 flex justify-between items-center bg-gradient-to-r from-blue-900/5 to-transparent">
                 <div>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Mark Price (Liquidation Guide)</p>
-                    <h2 id="price" class="text-6xl font-black">$---.--</h2>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Live Mark Price</p>
+                    <h2 id="live-price" class="text-6xl font-black text-white">$---.--</h2>
                 </div>
                 <div class="text-right">
-                    <p class="text-[10px] text-gray-500 uppercase mb-1">Funding Rate</p>
-                    <p id="funding" class="text-xl font-mono text-yellow-500">0.0000%</p>
+                    <p class="text-[10px] text-gray-500 uppercase mb-1">Funding (24h)</p>
+                    <p id="funding-val" class="text-xl font-mono text-blue-400">0.0000%</p>
                 </div>
             </div>
 
             <div class="grid grid-cols-2 gap-6 flex-1">
-                <div class="glass p-5 rounded-xl">
-                    <p class="text-[10px] text-red-500 font-bold uppercase mb-4">Ask Walls (Resistance)</p>
-                    <div id="asks" class="space-y-2 h-[300px] flex flex-col-reverse justify-start"></div>
+                <div class="panel p-5 overflow-hidden">
+                    <p class="text-[10px] text-red-400 font-bold uppercase mb-4">Sell Walls (Resistance)</p>
+                    <div id="ask-book" class="space-y-1 h-64 flex flex-col-reverse justify-start"></div>
                 </div>
-                <div class="glass p-5 rounded-xl">
-                    <p class="text-[10px] text-green-500 font-bold uppercase mb-4">Bid Walls (Support)</p>
-                    <div id="bids" class="space-y-2 h-[300px]"></div>
+                <div class="panel p-5 overflow-hidden">
+                    <p class="text-[10px] text-green-400 font-bold uppercase mb-4">Buy Walls (Support)</p>
+                    <div id="bid-book" class="space-y-1 h-64"></div>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        let ws;
-        let activeSym = 'TSLAUSDT';
+        let socket;
+        let symbol = 'TSLAUSDT';
 
-        function init() {
-            // Using the global Bitget V5 WebSocket
-            ws = new WebSocket('wss://ws.bitget.com/v5/public/mix');
+        function start() {
+            // Updated to the direct V5 endpoint for Futures
+            socket = new WebSocket('wss://ws.bitget.com/v5/public/mix');
 
-            ws.onopen = () => {
-                document.getElementById('status').className = "px-4 py-2 rounded bg-green-900/20 text-green-500 text-[10px] font-bold uppercase tracking-widest border border-green-500/30";
-                document.getElementById('status').innerText = "● Live Stream";
+            socket.onopen = () => {
+                const tag = document.getElementById('status-tag');
+                tag.innerText = "● Live Stream";
+                tag.className = "px-3 py-1 rounded-full text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 uppercase";
                 
-                // Subscription logic
-                const subMsg = {
-                    "op": "subscribe",
-                    "args": [
-                        { "instType": "USDT-FUTURES", "channel": "ticker", "instId": activeSym },
-                        { "instType": "USDT-FUTURES", "channel": "books", "instId": activeSym }
+                // Subscription for Mark Price and Depth
+                const msg = {
+                    op: "subscribe",
+                    args: [
+                        { instType: "USDT-FUTURES", channel: "ticker", instId: symbol },
+                        { instType: "USDT-FUTURES", channel: "books", instId: symbol }
                     ]
                 };
-                ws.send(JSON.stringify(subMsg));
+                socket.send(JSON.stringify(msg));
             };
 
-            ws.onmessage = (e) => {
+            socket.onmessage = (e) => {
                 const res = JSON.parse(e.data);
-                if (res.action === 'snapshot' || res.action === 'update') {
-                    if (res.arg.channel === 'ticker') {
-                        document.getElementById('price').innerText = '$' + parseFloat(res.data[0].lastPr).toFixed(2);
-                        document.getElementById('funding').innerText = (parseFloat(res.data[0].fundingRate) * 100).toFixed(4) + '%';
-                    }
-                    if (res.arg.channel === 'books') {
-                        renderOrderBook(res.data[0]);
-                    }
+                if (!res.data) return;
+
+                if (res.arg.channel === 'ticker') {
+                    document.getElementById('live-price').innerText = '$' + parseFloat(res.data[0].lastPr).toFixed(2);
+                    document.getElementById('funding-val').innerText = (parseFloat(res.data[0].fundingRate) * 100).toFixed(4) + '%';
+                }
+
+                if (res.arg.channel === 'books') {
+                    updateDepth(res.data[0]);
                 }
             };
 
-            ws.onclose = () => { setTimeout(init, 3000); };
-            ws.onerror = (err) => { console.error("WS Error", err); };
+            socket.onclose = () => { setTimeout(start, 2000); };
         }
 
-        function switchSymbol(sym) {
-            ws.send(JSON.stringify({ "op": "unsubscribe", "args": [{ "instType": "USDT-FUTURES", "channel": "ticker", "instId": activeSym }, { "instType": "USDT-FUTURES", "channel": "books", "instId": activeSym }] }));
-            activeSym = sym;
-            init(); // Re-init connection for fresh data
+        function changeTicker(val) {
+            socket.close();
+            symbol = val;
+            start();
         }
 
-        function renderOrderBook(data) {
+        function updateDepth(data) {
             const bids = data.bids.slice(0, 15);
             const asks = data.asks.slice(0, 15);
-            
-            // Render Visual Bars
-            document.getElementById('bids').innerHTML = bids.map(b => `<div class="flex justify-between text-[10px] text-green-400 font-mono"><span>$${parseFloat(b[0]).toFixed(2)}</span><span>${parseFloat(b[1]).toFixed(1)}</span></div>`).join('');
-            document.getElementById('asks').innerHTML = asks.map(a => `<div class="flex justify-between text-[10px] text-red-400 font-mono"><span>$${parseFloat(a[0]).toFixed(2)}</span><span>${parseFloat(a[1]).toFixed(1)}</span></div>`).join('');
 
-            // Cluster Logic: Find the "Whale" walls
-            const avgSize = [...bids, ...asks].reduce((acc, curr) => acc + parseFloat(curr[1]), 0) / 30;
+            document.getElementById('bid-book').innerHTML = bids.map(b => `<div class="flex justify-between text-[11px] font-mono text-green-500"><span>$${parseFloat(b[0]).toFixed(2)}</span><span>${parseFloat(b[1]).toFixed(1)}</span></div>`).join('');
+            document.getElementById('ask-book').innerHTML = asks.map(a => `<div class="flex justify-between text-[11px] font-mono text-red-500"><span>$${parseFloat(a[0]).toFixed(2)}</span><span>${parseFloat(a[1]).toFixed(1)}</span></div>`).join('');
+
+            // Cluster Algorithm: Identify 5x larger than average orders
+            const avg = [...bids, ...asks].reduce((a, b) => a + parseFloat(b[1]), 0) / 30;
             let clusters = [];
-            
-            bids.forEach(b => {
-                if (parseFloat(b[1]) > avgSize * 3) clusters.push({ p: b[0], s: b[1], type: 'BUY HUNT', class: 'hunt-buy' });
-            });
-            asks.forEach(a => {
-                if (parseFloat(a[1]) > avgSize * 3) clusters.push({ p: a[0], s: a[1], type: 'SELL HUNT', class: 'hunt-sell' });
-            });
 
-            document.getElementById('cluster-list').innerHTML = clusters.map(c => `
-                <div class="p-4 rounded-lg ${c.class} glass">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[9px] font-bold text-gray-500 uppercase">${c.type} ZONE</span>
-                        <span class="text-[9px] text-blue-400">LIQUIDITY DETECTED</span>
+            bids.forEach(b => { if(parseFloat(b[1]) > avg * 4) clusters.push({p: b[0], s: b[1], t: 'BUY HUNT', c: 'buy-zone'}); });
+            asks.forEach(a => { if(parseFloat(a[1]) > avg * 4) clusters.push({p: a[0], s: a[1], t: 'SELL HUNT', c: 'sell-zone'}); });
+
+            document.getElementById('clusters').innerHTML = clusters.map(z => `
+                <div class="p-4 rounded-lg panel ${z.c}">
+                    <div class="flex justify-between text-[9px] font-bold text-gray-500 mb-1">
+                        <span>${z.t} AREA</span>
+                        <span class="text-blue-500">LIQUIDITY DEPTH</span>
                     </div>
                     <div class="flex justify-between items-end">
-                        <span class="text-xl font-black">$${parseFloat(c.p).toFixed(2)}</span>
-                        <span class="text-xs text-white">${parseFloat(c.s).toFixed(1)} Units</span>
+                        <span class="text-2xl font-black">$${parseFloat(z.p).toFixed(2)}</span>
+                        <span class="text-xs">${parseFloat(z.s).toFixed(1)} Units</span>
                     </div>
                 </div>
-            `).join('') || '<div class="text-xs text-gray-700">Scanning for traps...</div>';
+            `).join('') || '<div class="text-xs text-gray-700">Monitoring order flow...</div>';
         }
 
-        init();
+        start();
     </script>
 </body>
 </html>
