@@ -1,192 +1,923 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Bitget Stock Perp Tracker | Professional Grade</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { background: #0b0e11; color: #e1e3e6; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .glass { background: #1e2026; border: 1px solid #2b2f36; border-radius: 12px; }
-        .hunt-card { border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.05); transition: all 0.3s; }
-        .hunt-card:hover { background: rgba(59, 130, 246, 0.1); }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LIQUIDITY HUNTER — Bitget Stock Perps</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:          #070a0f;
+      --panel:       rgba(9,13,20,0.93);
+      --card:        rgba(13,18,28,0.88);
+      --border:      rgba(255,255,255,0.055);
+      --border-b:    rgba(0,140,255,0.18);
+      --bid:         #00e87a;
+      --bid-dim:     rgba(0,232,122,0.07);
+      --bid-glow:    rgba(0,232,122,0.35);
+      --ask:         #ff2d5b;
+      --ask-dim:     rgba(255,45,91,0.07);
+      --ask-glow:    rgba(255,45,91,0.35);
+      --accent:      #0088ff;
+      --accent-dim:  rgba(0,136,255,0.1);
+      --gold:        #ffc400;
+      --txt:         #dde3ee;
+      --txt2:        #7a8598;
+      --txt3:        #374151;
+      --font-h:      'Orbitron', monospace;
+      --font-m:      'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--txt); font-family: var(--font-m); }
+
+    /* ── background grid ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,136,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,136,255,.025) 1px, transparent 1px);
+      background-size: 44px 44px;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.025) 2px, rgba(0,0,0,.025) 4px);
+    }
+
+    /* ── layout ── */
+    #app {
+      position: relative; z-index: 2;
+      display: grid;
+      grid-template-columns: 248px 1fr 222px;
+      grid-template-rows: 62px 1fr;
+      gap: 7px;
+      padding: 7px;
+      height: 100vh;
+    }
+    #hdr  { grid-column: 1 / -1; }
+
+    /* ── glass panel ── */
+    .gp {
+      background: var(--panel);
+      backdrop-filter: blur(22px) saturate(1.6);
+      -webkit-backdrop-filter: blur(22px) saturate(1.6);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    .gp::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255,255,255,.028) 0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    /* ── section header ── */
+    .sh {
+      font-family: var(--font-h);
+      font-size: 9px; font-weight: 600; letter-spacing: 2px; color: var(--txt3);
+      padding: 7px 11px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    /* ── depth rows ── */
+    .dr {
+      display: grid; grid-template-columns: 1fr 100px 90px;
+      align-items: center; height: 27px; padding: 0 8px;
+      position: relative; cursor: default; transition: background .08s;
+    }
+    .dr:hover { background: rgba(255,255,255,.025); }
+    .dr-bg { position: absolute; top: 0; height: 100%; pointer-events: none; transition: width .14s ease-out; }
+    .dr-cum-bid  { right: 0; background: linear-gradient(to right, transparent, rgba(0,232,122,.11)); }
+    .dr-cum-ask  { right: 0; background: linear-gradient(to right, transparent, rgba(255,45,91,.11)); }
+    .dr-sz-bid   { right: 0; background: rgba(0,232,122,.065); }
+    .dr-sz-ask   { right: 0; background: rgba(255,45,91,.065); }
+
+    .dr-cl-bid { background: rgba(0,232,122,.045) !important; }
+    .dr-cl-ask { background: rgba(255,45,91,.045) !important; }
+
+    .col-p { font-size: 12px; font-weight: 500; position: relative; z-index: 1; display: flex; align-items: center; gap: 5px; }
+    .col-s { font-size: 11px; color: var(--txt2); text-align: right; position: relative; z-index: 1; }
+    .col-t { font-size: 10px; color: var(--txt3); text-align: right; position: relative; z-index: 1; }
+
+    .ctag {
+      font-size: 8.5px; font-weight: 700; padding: 1px 4px; border-radius: 3px; letter-spacing: .4px;
+      display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0;
+    }
+    .ctag-bid { background: rgba(0,232,122,.14); color: var(--bid); border: 1px solid rgba(0,232,122,.28); }
+    .ctag-ask { background: rgba(255,45,91,.14); color: var(--ask); border: 1px solid rgba(255,45,91,.28); }
+
+    /* ── spread bar ── */
+    .spread-bar {
+      height: 30px; flex-shrink: 0;
+      background: linear-gradient(90deg, transparent, rgba(0,136,255,.06), transparent);
+      border-top: 1px solid rgba(0,136,255,.12);
+      border-bottom: 1px solid rgba(0,136,255,.12);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
+    }
+
+    /* ── badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .5px;
+    }
+    .badge-live { background: rgba(0,232,122,.1); color: var(--bid); border: 1px solid rgba(0,232,122,.22); }
+    .badge-conn { background: rgba(255,140,0,.1); color: #ff8c00; border: 1px solid rgba(255,140,0,.22); }
+    .badge-off  { background: rgba(255,45,91,.1); color: var(--ask); border: 1px solid rgba(255,45,91,.22); }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; }
+
+    /* ── mark price ── */
+    .mark-price {
+      font-family: var(--font-h); font-size: 26px; font-weight: 700; letter-spacing: 1px;
+      text-shadow: 0 0 22px rgba(0,136,255,.45);
+      transition: text-shadow .25s;
+    }
+
+    /* ── flash ── */
+    @keyframes fu { 0%{color:var(--bid)} 100%{color:var(--txt)} }
+    @keyframes fd { 0%{color:var(--ask)} 100%{color:var(--txt)} }
+    .fu { animation: fu .45s ease-out forwards; }
+    .fd { animation: fd .45s ease-out forwards; }
+
+    /* ── cluster item ── */
+    .ci { padding: 9px 11px; border-bottom: 1px solid var(--border); transition: background .18s; }
+    .ci:hover { background: rgba(255,255,255,.018); }
+
+    @keyframes ci-in { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+    .ci { animation: ci-in .28s ease-out; }
+
+    /* ── pulse ── */
+    @keyframes pb { 0%,100%{box-shadow:0 0 0 0 var(--bid-glow)} 50%{box-shadow:0 0 10px 3px var(--bid-glow)} }
+    @keyframes pa { 0%,100%{box-shadow:0 0 0 0 var(--ask-glow)} 50%{box-shadow:0 0 10px 3px var(--ask-glow)} }
+    .pb { animation: pb 2.2s infinite; }
+    .pa { animation: pa 2.2s infinite; }
+
+    /* ── status dot ── */
+    @keyframes sdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(.75)} }
+    .sdot { animation: sdot 2s infinite; }
+
+    /* ── exchange row ── */
+    .er {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 11px; border-bottom: 1px solid var(--border); transition: background .2s;
+    }
+    .er:hover { background: rgba(255,255,255,.018); }
+
+    /* ── spinner ── */
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spin { animation: spin 1.1s linear infinite; }
+
+    /* ── blink ── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── funding badge ── */
+    .fb { font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+    .fb-pos { background:rgba(0,232,122,.1); color:var(--bid); border:1px solid rgba(0,232,122,.22); }
+    .fb-neg { background:rgba(255,45,91,.1); color:var(--ask); border:1px solid rgba(255,45,91,.22); }
+
+    select {
+      appearance: none;
+      background: var(--card); border: 1px solid var(--border-b);
+      color: var(--txt); font-family: var(--font-m);
+      padding: 5px 28px 5px 10px; border-radius: 6px; font-size: 12px;
+      cursor: pointer; outline: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7280' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+      min-width: 155px;
+    }
+    select:focus { border-color: var(--accent); }
+    select option { background: #0c1018; }
+
+    input[type="text"] {
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--txt); font-family: var(--font-m);
+      padding: 5px 10px; border-radius: 6px; font-size: 11px; outline: none;
+    }
+    input[type="text"]:focus { border-color: var(--accent); }
+    input[type="range"] { accent-color: var(--accent); }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 2px; }
+
+    .divv { width: 1px; background: var(--border); align-self: stretch; margin: 8px 0; flex-shrink: 0; }
+  </style>
 </head>
-<body class="p-6 h-screen flex flex-col">
+<body>
+<div id="app">
 
-    <header class="flex justify-between items-center mb-6 glass p-4">
-        <div class="flex items-center gap-3">
-            <i class="fa-solid fa-microchip text-blue-500 text-2xl"></i>
-            <h1 class="text-xl font-black tracking-tight uppercase">Bitget <span class="text-blue-500">Stock Scanner</span></h1>
-        </div>
-        <div class="flex items-center gap-4">
-            <div class="relative">
-                <select id="asset-list" onchange="switchAsset(this.value)" class="bg-gray-900 border border-gray-700 px-4 py-2 rounded-lg text-sm outline-none w-64 appearance-none cursor-pointer">
-                    <option>Loading All Stock Perps...</option>
-                </select>
-                <div class="absolute right-3 top-2.5 pointer-events-none text-gray-500 text-xs"><i class="fa-solid fa-chevron-down"></i></div>
-            </div>
-            <div id="status-chip" class="px-4 py-2 rounded-lg bg-red-900/20 text-red-500 text-[10px] font-bold uppercase tracking-widest border border-red-500/30">
-                <i class="fa-solid fa-circle-notch animate-spin mr-2"></i> Connecting
-            </div>
-        </div>
-    </header>
+  <!-- ═══════════════════════ HEADER ═══════════════════════ -->
+  <header id="hdr" class="gp" style="display:flex;align-items:center;padding:0 14px;gap:16px;">
 
-    <div class="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
-        <aside class="col-span-4 glass p-5 flex flex-col">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Liquidity Clusters</h2>
-                <span id="stock-count" class="bg-blue-500/10 text-blue-500 text-[10px] px-2 py-0.5 rounded border border-blue-500/20">0 STOCKS FOUND</span>
-            </div>
-            <div id="cluster-radar" class="space-y-3 overflow-y-auto flex-1 pr-2 scrollbar-hide">
-                <div class="text-center p-10 text-xs text-gray-600 italic">Analyzing all stock order books...</div>
-            </div>
-        </aside>
-
-        <main class="col-span-8 space-y-6 flex flex-col">
-            <div class="glass p-8 flex justify-between items-center bg-gradient-to-br from-blue-900/10 to-transparent">
-                <div>
-                    <p id="active-name" class="text-blue-500 text-xs font-bold uppercase tracking-widest mb-2">---</p>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Mark Price</p>
-                    <h2 id="live-price" class="text-7xl font-black text-white">$---.--</h2>
-                </div>
-                <div class="text-right flex flex-col gap-4">
-                    <div>
-                        <p class="text-[10px] text-gray-500 uppercase mb-1">Funding Rate</p>
-                        <p id="funding-text" class="text-xl font-mono text-yellow-500">0.0000%</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-gray-500 uppercase mb-1">24h Change</p>
-                        <p id="change-text" class="text-lg font-bold">---</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-6 flex-1 overflow-hidden">
-                <div class="glass p-6 flex flex-col">
-                    <p class="text-[10px] text-red-500 font-bold uppercase mb-4 tracking-tighter">Resistance (Sell Side)</p>
-                    <div id="ask-stack" class="flex-1 space-y-1 overflow-hidden flex flex-col-reverse justify-start"></div>
-                </div>
-                <div class="glass p-6 flex flex-col">
-                    <p class="text-[10px] text-green-500 font-bold uppercase mb-4 tracking-tighter">Support (Buy Side)</p>
-                    <div id="bid-stack" class="flex-1 space-y-1 overflow-hidden"></div>
-                </div>
-            </div>
-        </main>
+    <!-- Logo -->
+    <div style="display:flex;align-items:center;gap:9px;flex-shrink:0;">
+      <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#00e87a);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M3 3h18v18H3z" stroke="#fff" stroke-width="1.5"/>
+          <path d="M3 12h3.5l3-6 4 12 3-6 2.5 3H21" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <div style="font-family:var(--font-h);font-size:10px;font-weight:700;color:var(--accent);letter-spacing:2px;">LIQUIDITY HUNTER</div>
+        <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;">BITGET STOCK PERPS</div>
+      </div>
     </div>
 
-    <script>
-        let ws;
-        let currentSymbol = 'TSLAUSDT';
-        const stockTickers = ['TSLA', 'NVDA', 'AAPL', 'AMZN', 'MSFT', 'META', 'GOOG', 'COIN', 'MSTR', 'NFLX', 'BABA', 'AMD', 'INTC', 'PYPL', 'TSM', 'DIS', 'PYPL', 'SHOP'];
+    <div class="divv"></div>
 
-        async function init() {
-            const status = document.getElementById('status-chip');
-            
-            try {
-                // Fetch ALL symbols from Bitget via proxy to avoid CORS
-                const response = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.bitget.com/api/v2/mix/market/symbols?productType=USDT-FUTURES'));
-                const raw = await response.json();
-                const data = JSON.parse(raw.contents);
-                
-                // Filter for stock perps (Usually have stock tickers or are labeled differently)
-                const stocks = data.data.filter(s => 
-                    stockTickers.some(t => s.symbol.startsWith(t)) || s.symbolName.includes('Stock')
-                );
+    <!-- Symbol selector -->
+    <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
+      <div style="font-size:9px;color:var(--txt3);letter-spacing:1px;">SYMBOL</div>
+      <input type="text" id="symSearch" placeholder="Filter…" style="width:75px;" oninput="filterSyms(this.value)">
+      <select id="symSel" onchange="onSym(this.value)"><option value="">⏳ Loading…</option></select>
+    </div>
 
-                const selector = document.getElementById('asset-list');
-                selector.innerHTML = stocks.map(s => `<option value="${s.symbol}">${s.symbol.replace('USDT', '')} Perpetuals</option>`).join('');
-                document.getElementById('stock-count').innerText = `${stocks.length} STOCKS FOUND`;
-                
-                connectWebSocket();
-            } catch (err) {
-                console.error("Fetch Error:", err);
-                // Fallback to basic list if API is completely blocked
-                document.getElementById('asset-list').innerHTML = '<option value="TSLAUSDT">TSLAUSDT</option><option value="NVDAUSDT">NVDAUSDT</option>';
-                connectWebSocket();
-            }
-        }
+    <div class="divv"></div>
 
-        function connectWebSocket() {
-            ws = new WebSocket('wss://ws.bitget.com/v5/public/mix');
+    <!-- Mark price -->
+    <div style="flex-shrink:0;">
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;margin-bottom:1px;">MARK PRICE</div>
+      <div id="markPrice" class="mark-price">———.——</div>
+    </div>
 
-            ws.onopen = () => {
-                const status = document.getElementById('status-chip');
-                status.innerHTML = '<i class="fa-solid fa-circle text-green-500 mr-2"></i> Live Feed';
-                status.className = status.className.replace('text-red-500', 'text-green-500');
-                
-                subscribe(currentSymbol);
-            };
+    <!-- Last / change -->
+    <div style="flex-shrink:0;">
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;margin-bottom:2px;">LAST / 24H</div>
+      <div style="display:flex;align-items:baseline;gap:8px;">
+        <span id="lastP" style="font-family:var(--font-h);font-size:15px;font-weight:600;">—</span>
+        <span id="chg24" style="font-size:13px;font-weight:700;">—</span>
+      </div>
+    </div>
 
-            ws.onmessage = (e) => {
-                const msg = JSON.parse(e.data);
-                if (!msg.data) return;
+    <!-- High / Low -->
+    <div style="flex-shrink:0;">
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;margin-bottom:2px;">HIGH / LOW</div>
+      <div style="font-size:12px;font-family:var(--font-m);">
+        <span id="h24" style="color:var(--bid);">—</span>
+        <span style="color:var(--txt3);"> / </span>
+        <span id="l24" style="color:var(--ask);">—</span>
+      </div>
+    </div>
 
-                if (msg.arg.channel === 'ticker') updateUI(msg.data[0]);
-                if (msg.arg.channel === 'books') processDepth(msg.data[0]);
-            };
+    <!-- Volume -->
+    <div style="flex-shrink:0;">
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;margin-bottom:2px;">24H VOL</div>
+      <div id="vol24" style="font-size:12px;color:var(--txt2);">—</div>
+    </div>
 
-            ws.onclose = () => setTimeout(connectWebSocket, 3000);
-        }
+    <!-- Funding -->
+    <div style="flex-shrink:0;">
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;margin-bottom:3px;">FUNDING</div>
+      <div id="funding" class="fb fb-pos">—</div>
+    </div>
 
-        function subscribe(sym) {
-            ws.send(JSON.stringify({
-                "op": "subscribe",
-                "args": [
-                    { "instType": "USDT-FUTURES", "channel": "ticker", "instId": sym },
-                    { "instType": "USDT-FUTURES", "channel": "books", "instId": sym }
-                ]
-            }));
-            document.getElementById('active-name').innerText = sym;
-        }
+    <div style="flex:1;"></div>
 
-        function switchAsset(newSym) {
-            ws.send(JSON.stringify({ "op": "unsubscribe", "args": [{ "instType": "USDT-FUTURES", "channel": "ticker", "instId": currentSymbol }, { "instType": "USDT-FUTURES", "channel": "books", "instId": currentSymbol }] }));
-            currentSymbol = newSym;
-            subscribe(newSym);
-            document.getElementById('cluster-radar').innerHTML = '<div class="text-center p-10 text-xs text-gray-700 italic">Updating Radar...</div>';
-        }
+    <!-- Cluster count -->
+    <div style="display:flex;align-items:center;gap:6px;padding:3px 10px;background:rgba(255,196,0,.07);border:1px solid rgba(255,196,0,.18);border-radius:6px;flex-shrink:0;">
+      <span style="font-size:9px;color:var(--gold);letter-spacing:1px;">CLUSTERS</span>
+      <span id="clCnt" style="font-family:var(--font-h);font-size:15px;font-weight:700;color:var(--gold);">0</span>
+    </div>
 
-        function updateUI(d) {
-            document.getElementById('live-price').innerText = '$' + parseFloat(d.lastPr).toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('funding-text').innerText = (parseFloat(d.fundingRate) * 100).toFixed(4) + '%';
-            
-            const change = (parseFloat(d.priceChangePercent) * 100).toFixed(2);
-            const changeEl = document.getElementById('change-text');
-            changeEl.innerText = (change > 0 ? '+' : '') + change + '%';
-            changeEl.className = change >= 0 ? 'text-green-500 text-lg font-bold' : 'text-red-500 text-lg font-bold';
-        }
+    <!-- WS status -->
+    <div id="wsStatus" class="badge badge-conn" style="flex-shrink:0;">
+      <span class="dot sdot"></span>CONNECTING
+    </div>
 
-        function processDepth(d) {
-            const bids = d.bids.slice(0, 15);
-            const asks = d.asks.slice(0, 15);
+    <!-- Clock -->
+    <div style="text-align:right;flex-shrink:0;min-width:70px;">
+      <div id="clock" style="font-family:var(--font-m);font-size:13px;color:var(--accent);letter-spacing:1px;font-weight:700;"></div>
+      <div style="font-size:8px;color:var(--txt3);">UTC</div>
+    </div>
+  </header>
 
-            document.getElementById('bid-stack').innerHTML = bids.map(b => `<div class="flex justify-between text-[11px] font-mono text-green-500/80"><span>$${parseFloat(b[0]).toFixed(2)}</span><span>${parseFloat(b[1]).toFixed(1)}</span></div>`).join('');
-            document.getElementById('ask-stack').innerHTML = asks.map(a => `<div class="flex justify-between text-[11px] font-mono text-red-500/80"><span>$${parseFloat(a[0]).toFixed(2)}</span><span>${parseFloat(a[1]).toFixed(1)}</span></div>`).join('');
+  <!-- ═══════════════════════ LEFT: CLUSTER RADAR ═══════════════════════ -->
+  <aside class="gp" style="display:flex;flex-direction:column;min-height:0;">
+    <div class="sh">
+      <span>⚡ CLUSTER RADAR</span>
+      <span id="thLbl" style="color:var(--accent);font-size:8.5px;">×3.5 AVG</span>
+    </div>
 
-            // Cluster Algorithm: Identify orders 4x the average depth
-            const avg = [...bids, ...asks].reduce((a, b) => a + parseFloat(b[1]), 0) / 30;
-            let hunts = [];
+    <!-- Threshold slider -->
+    <div style="padding:7px 11px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;flex-shrink:0;">
+      <span style="font-size:9px;color:var(--txt3);white-space:nowrap;">THRESHOLD</span>
+      <input type="range" id="thSlider" min="1.5" max="8" step="0.5" value="3.5" style="flex:1;" oninput="setThresh(this.value)">
+      <span id="thVal" style="font-size:11px;color:var(--accent);min-width:28px;text-align:right;">3.5×</span>
+    </div>
 
-            bids.forEach(b => { if(parseFloat(b[1]) > avg * 3.5) hunts.push({p: b[0], s: b[1], t: 'SUPPORT CLUSTER', c: 'border-green-500/30 bg-green-500/5'}); });
-            asks.forEach(a => { if(parseFloat(a[1]) > avg * 3.5) hunts.push({p: a[0], s: a[1], t: 'RESISTANCE WALL', c: 'border-red-500/30 bg-red-500/5'}); });
+    <!-- Mini stats -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="padding:7px 10px;background:rgba(0,232,122,.03);">
+        <div style="font-size:8.5px;color:var(--txt3);">SUPPORT WALLS</div>
+        <div id="supCnt" style="font-family:var(--font-h);font-size:17px;color:var(--bid);">0</div>
+      </div>
+      <div style="padding:7px 10px;background:rgba(255,45,91,.03);">
+        <div style="font-size:8.5px;color:var(--txt3);">RESIST WALLS</div>
+        <div id="resCnt" style="font-family:var(--font-h);font-size:17px;color:var(--ask);">0</div>
+      </div>
+    </div>
 
-            document.getElementById('cluster-radar').innerHTML = hunts.map(h => `
-                <div class="p-4 rounded-xl border ${h.c} glass">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[9px] font-black uppercase text-gray-500">${h.t}</span>
-                        <span class="text-[9px] font-bold text-blue-400">LIQUIDITY DEPTH</span>
-                    </div>
-                    <div class="flex justify-between items-end">
-                        <span class="text-2xl font-black text-white">$${parseFloat(h.p).toFixed(2)}</span>
-                        <span class="text-xs font-mono text-gray-400">${parseFloat(h.s).toFixed(1)} Units</span>
-                    </div>
-                </div>
-            `).join('') || '<div class="text-center p-10 text-[10px] text-gray-700">Scan complete: No major traps detected in immediate book.</div>';
-        }
+    <!-- Cluster list -->
+    <div id="clList" style="overflow-y:auto;flex:1;">
+      <div id="clWait" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:90px;gap:7px;color:var(--txt3);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="spin" style="opacity:.35;">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="55" stroke-dashoffset="20"/>
+        </svg>
+        <span style="font-size:10px;">Awaiting book data…</span>
+      </div>
+    </div>
 
-        init();
-    </script>
+    <!-- Avg size footer -->
+    <div style="padding:7px 11px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+      <span style="font-size:9px;color:var(--txt3);">AVG ORDER SIZE</span>
+      <span id="avgSz" style="font-size:11px;color:var(--txt2);">—</span>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════ CENTER: DEPTH MAP ═══════════════════════ -->
+  <main class="gp" style="display:flex;flex-direction:column;min-height:0;">
+    <div class="sh">
+      <span>📊 ORDER BOOK DEPTH</span>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <div style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:1px;background:var(--ask);opacity:.55;display:inline-block;"></span><span style="font-size:8.5px;color:var(--txt3);">ASKS</span></div>
+        <div style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:1px;background:var(--bid);opacity:.55;display:inline-block;"></span><span style="font-size:8.5px;color:var(--txt3);">BIDS</span></div>
+        <span style="font-size:8.5px;color:var(--accent);">TOP 20 LEVELS</span>
+      </div>
+    </div>
+
+    <!-- Column headers -->
+    <div style="display:grid;grid-template-columns:1fr 100px 90px;padding:3px 8px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;">PRICE (USDT)</div>
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;text-align:right;">SIZE</div>
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;text-align:right;">CUM</div>
+    </div>
+
+    <!-- Asks (column-reverse so best ask is nearest spread) -->
+    <div id="askBook" style="overflow:hidden;flex:1;display:flex;flex-direction:column-reverse;"></div>
+
+    <!-- Spread bar -->
+    <div class="spread-bar">
+      <div style="display:flex;align-items:center;gap:7px;">
+        <span style="font-size:9px;color:var(--txt3);">SPREAD</span>
+        <span id="spreadV" style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--font-m);">—</span>
+        <span id="spreadP" style="font-size:9px;color:var(--txt3);">(—%)</span>
+      </div>
+      <div id="midP" style="font-family:var(--font-h);font-size:15px;font-weight:700;color:var(--txt);">———.——</div>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <span style="font-size:9px;color:var(--txt3);">B/A RATIO</span>
+        <span id="baRatio" style="font-size:11px;font-weight:700;font-family:var(--font-m);color:var(--txt2);">—</span>
+      </div>
+    </div>
+
+    <!-- Bids -->
+    <div id="bidBook" style="overflow:hidden;flex:1;"></div>
+  </main>
+
+  <!-- ═══════════════════════ RIGHT: EXCHANGE STATUS ═══════════════════════ -->
+  <aside class="gp" style="display:flex;flex-direction:column;min-height:0;">
+    <div class="sh">
+      <span>🌐 EXCHANGE STATUS</span>
+      <span style="color:var(--bid);font-size:8.5px;">SIMULATED</span>
+    </div>
+
+    <div id="exList" style="overflow-y:auto;flex:1;"></div>
+
+    <!-- Sentiment -->
+    <div style="border-top:1px solid var(--border);padding:9px 11px;flex-shrink:0;">
+      <div style="font-size:8.5px;color:var(--txt3);letter-spacing:1px;margin-bottom:6px;">BOOK SENTIMENT</div>
+      <div style="height:5px;border-radius:3px;overflow:hidden;background:rgba(255,255,255,.05);margin-bottom:5px;position:relative;">
+        <div id="sentBid" style="position:absolute;left:0;top:0;height:100%;background:var(--bid);border-radius:3px;transition:width .5s;width:50%;"></div>
+        <div id="sentAsk" style="position:absolute;right:0;top:0;height:100%;background:var(--ask);border-radius:3px;transition:width .5s;width:50%;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;">
+        <span style="color:var(--bid);">BID <span id="bidPct">—</span></span>
+        <span style="color:var(--ask);">ASK <span id="askPct">—</span></span>
+      </div>
+    </div>
+
+    <!-- Depth stats -->
+    <div style="border-top:1px solid var(--border);padding:9px 11px;display:grid;grid-template-columns:1fr 1fr;gap:7px;flex-shrink:0;">
+      <div>
+        <div style="font-size:8.5px;color:var(--txt3);">BID DEPTH</div>
+        <div id="totBid" style="font-size:12px;color:var(--bid);font-family:var(--font-m);font-weight:600;">—</div>
+      </div>
+      <div>
+        <div style="font-size:8.5px;color:var(--txt3);">ASK DEPTH</div>
+        <div id="totAsk" style="font-size:12px;color:var(--ask);font-family:var(--font-m);font-weight:600;">—</div>
+      </div>
+      <div>
+        <div style="font-size:8.5px;color:var(--txt3);">IMBALANCE</div>
+        <div id="imbV" style="font-size:12px;color:var(--accent);font-family:var(--font-m);font-weight:600;">—</div>
+      </div>
+      <div>
+        <div style="font-size:8.5px;color:var(--txt3);">UPD/SEC</div>
+        <div id="updR" style="font-size:12px;color:var(--txt2);font-family:var(--font-m);">—</div>
+      </div>
+    </div>
+  </aside>
+
+</div><!-- /#app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════════════ */
+const CFG = {
+  WS_URL:      'wss://ws.bitget.com/v5/public/mix',
+  API_URL:     'https://api.bitget.com/api/v2/mix/market/tickers?productType=susdt-futures',
+  PROXIES:     [
+    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  ],
+  INST_TYPE:   'SUSDT-FUTURES',
+  BOOK_LVL:    20,
+  THRESHOLD:   3.5,
+  PING_MS:     20000,
+  RECONNECT:   3500,
+  MAX_RETRIES: 12,
+};
+
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
+const S = {
+  ws: null, wsState: 'off',
+  ping: null, reconTimer: null, retries: 0,
+  sym: '', allSyms: [], filtSyms: [],
+  bids: new Map(), asks: new Map(),
+  mark: null, last: null, prevLast: null,
+  clusters: [],
+  thresh: CFG.THRESHOLD,
+  upd: 0, updTs: Date.now(), updR: 0,
+};
+
+/* ═══════════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════════ */
+const $  = id => document.getElementById(id);
+const pf = (v, d=2) => v != null ? (+v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
+const sz = v => {
+  const n = +v;
+  if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toFixed(2);
+};
+const dec = p => +p > 1000 ? 2 : +p > 10 ? 2 : +p > 1 ? 4 : 6;
+
+function flash(el, cls) {
+  el.classList.remove('fu','fd');
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CLOCK
+═══════════════════════════════════════════════════════════ */
+(function tick(){
+  $('clock').textContent = new Date().toUTCString().match(/\d{2}:\d{2}:\d{2}/)[0];
+  setTimeout(tick, 1000);
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   UPDATE RATE
+═══════════════════════════════════════════════════════════ */
+setInterval(() => {
+  const dt = (Date.now() - S.updTs) / 1000;
+  S.updR = dt > 0 ? Math.round(S.upd / dt) : 0;
+  S.upd = 0; S.updTs = Date.now();
+  $('updR').textContent = S.updR + '/s';
+}, 2000);
+
+/* ═══════════════════════════════════════════════════════════
+   EXCHANGE STATUS (simulated — realistic latency ranges)
+═══════════════════════════════════════════════════════════ */
+const EX = [
+  {n:'Bitget',   base:12},
+  {n:'Binance',  base:8 },
+  {n:'OKX',      base:16},
+  {n:'Bybit',    base:19},
+  {n:'Deribit',  base:24},
+  {n:'Gate.io',  base:31},
+  {n:'Kraken',   base:37},
+  {n:'MEXC',     base:28},
+  {n:'Coinbase', base:44},
+  {n:'KuCoin',   base:48},
+];
+function renderEx() {
+  $('exList').innerHTML = EX.map(e => {
+    const ms  = e.base + Math.round((Math.random()-.5)*8);
+    const col = ms < 20 ? 'var(--bid)' : ms < 38 ? 'var(--gold)' : 'var(--ask)';
+    const bw  = Math.min(100, ms/60*100).toFixed(0);
+    return `<div class="er">
+      <div style="display:flex;align-items:center;gap:7px;">
+        <div class="dot sdot" style="background:${col};animation-delay:${(Math.random()*2).toFixed(1)}s;"></div>
+        <span style="font-size:12px;">${e.n}</span>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:${col};margin-bottom:3px;">${ms}ms</div>
+        <div style="width:55px;height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;">
+          <div style="width:${bw}%;height:100%;background:${col};border-radius:2px;transition:width .4s;"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+renderEx();
+setInterval(renderEx, 3200);
+
+/* ═══════════════════════════════════════════════════════════
+   SYMBOL FETCHING
+═══════════════════════════════════════════════════════════ */
+const FALLBACK_SYMS = [
+  'TSLAUSDT','NVDAUSDT','AAPLUSDT','MSFTUSDT','GOOGLUSDT','AMZNUSDT',
+  'METAUSDT','MSTRUSDT','COINUSDT','NFLXUSDT','SPYUSDT','QQQUSDT',
+  'ROBHUSDT','SOFIUSDT','PLTRAAUSDT','BABAAUSDT','XOMAUSDT',
+];
+
+async function loadSyms() {
+  $('symSel').innerHTML = '<option value="">⏳ Fetching symbols…</option>';
+
+  let data = null;
+
+  // 1. Try direct (works when served from HTTP or when CORS is open)
+  try {
+    const r = await fetch(CFG.API_URL, { signal: AbortSignal.timeout(7000) });
+    if (r.ok) {
+      const j = await r.json();
+      if (j.code === '00000') data = j.data;
+    }
+  } catch(e) { console.info('[direct] fetch failed, trying proxy'); }
+
+  // 2. Try CORS proxies
+  if (!data) {
+    for (const proxy of CFG.PROXIES) {
+      try {
+        const url = proxy(CFG.API_URL);
+        const r   = await fetch(url, { signal: AbortSignal.timeout(9000) });
+        if (!r.ok) continue;
+        let j = await r.json();
+        // allorigins wraps in {contents:"..."}
+        if (j.contents) j = JSON.parse(j.contents);
+        if (j.code === '00000' && j.data) { data = j.data; break; }
+      } catch(e) { console.info('[proxy] attempt failed:', e.message); }
+    }
+  }
+
+  if (data) {
+    S.allSyms = data
+      .filter(t => t.symbol && t.symbol.endsWith('USDT'))
+      .map(t => t.symbol)
+      .sort();
+    console.info(`Loaded ${S.allSyms.length} symbols from API`);
+  } else {
+    console.warn('All fetches failed — using fallback symbol list');
+    S.allSyms = [...FALLBACK_SYMS];
+  }
+
+  S.filtSyms = [...S.allSyms];
+  populateSel(S.allSyms);
+
+  // Auto-select TSLA or first
+  const def = S.allSyms.find(s => s.startsWith('TSLA')) || S.allSyms[0];
+  if (def) { $('symSel').value = def; onSym(def); }
+}
+
+function populateSel(syms) {
+  $('symSel').innerHTML = syms.length
+    ? syms.map(s => `<option value="${s}">${s.replace('USDT','/USDT')}</option>`).join('')
+    : '<option value="">No symbols found</option>';
+}
+
+function filterSyms(q) {
+  const u = q.toUpperCase().trim();
+  S.filtSyms = u ? S.allSyms.filter(s => s.includes(u)) : [...S.allSyms];
+  populateSel(S.filtSyms);
+  if (S.filtSyms.length) $('symSel').value = S.filtSyms[0];
+}
+
+function onSym(sym) {
+  if (!sym || sym === S.sym) return;
+  S.sym = sym;
+  resetState();
+  reconnectWS();
+}
+
+function resetState() {
+  S.bids.clear(); S.asks.clear();
+  S.clusters = []; S.mark = null; S.last = null;
+  $('markPrice').textContent = '———.——';
+  $('lastP').textContent = '—'; $('chg24').textContent = '—';
+  $('h24').textContent = '—'; $('l24').textContent = '—';
+  $('vol24').textContent = '—'; $('funding').textContent = '—';
+  $('funding').className = 'fb fb-pos';
+  $('spreadV').textContent = '—'; $('midP').textContent = '———.——';
+  $('askBook').innerHTML = ''; $('bidBook').innerHTML = '';
+  $('clCnt').textContent = '0'; $('supCnt').textContent = '0'; $('resCnt').textContent = '0';
+  $('clList').innerHTML = `<div id="clWait" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:90px;gap:7px;color:var(--txt3);">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="spin" style="opacity:.35;">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="55" stroke-dashoffset="20"/>
+    </svg><span style="font-size:10px;">Connecting…</span></div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WEBSOCKET
+═══════════════════════════════════════════════════════════ */
+function wsStatus(s) {
+  S.wsState = s;
+  const el = $('wsStatus');
+  const map = {
+    live: ['badge-live','LIVE'],
+    conn: ['badge-conn','CONNECTING'],
+    off:  ['badge-off','OFFLINE'],
+  };
+  const [cls,lbl] = map[s] || map.off;
+  el.className = `badge ${cls}`;
+  el.innerHTML = `<span class="dot sdot"></span>${lbl}`;
+}
+
+function clearPing() { if (S.ping) { clearInterval(S.ping); S.ping = null; } }
+
+function connectWS() {
+  try { if (S.ws) S.ws.close(1000); } catch(e) {}
+  S.ws = null;
+  if (!S.sym) return;
+
+  wsStatus('conn');
+  const ws = new WebSocket(CFG.WS_URL);
+  S.ws = ws;
+
+  ws.onopen = () => {
+    wsStatus('live');
+    S.retries = 0;
+    const args = [
+      { instType: CFG.INST_TYPE, channel: 'books15',   instId: S.sym },
+      { instType: CFG.INST_TYPE, channel: 'ticker',    instId: S.sym },
+      { instType: CFG.INST_TYPE, channel: 'markPrice', instId: S.sym },
+    ];
+    ws.send(JSON.stringify({ op: 'subscribe', args }));
+    clearPing();
+    S.ping = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) ws.send('ping');
+    }, CFG.PING_MS);
+  };
+
+  ws.onmessage = ev => {
+    if (ev.data === 'pong') return;
+    try { onMsg(JSON.parse(ev.data)); } catch(e) {}
+  };
+
+  ws.onerror = () => {};
+  ws.onclose = ev => {
+    clearPing();
+    wsStatus('off');
+    if (ev.code !== 1000) schedRecon();
+  };
+}
+
+function schedRecon() {
+  if (S.retries >= CFG.MAX_RETRIES) return;
+  const d = CFG.RECONNECT * Math.min(S.retries + 1, 5);
+  S.reconTimer = setTimeout(() => { S.retries++; connectWS(); }, d);
+}
+
+function reconnectWS() {
+  if (S.reconTimer) { clearTimeout(S.reconTimer); S.reconTimer = null; }
+  clearPing();
+  connectWS();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MESSAGE DISPATCH
+═══════════════════════════════════════════════════════════ */
+function onMsg(msg) {
+  if (!msg?.arg?.channel || !msg.data?.length) return;
+  S.upd++;
+  switch (msg.arg.channel) {
+    case 'books15':
+    case 'books':    onBook(msg);       break;
+    case 'ticker':   onTicker(msg.data[0]); break;
+    case 'markPrice':onMark(msg.data[0]);   break;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ORDER BOOK
+═══════════════════════════════════════════════════════════ */
+function onBook(msg) {
+  const d = msg.data[0];
+  if (msg.action === 'snapshot') { S.bids.clear(); S.asks.clear(); }
+
+  (d.bids || []).forEach(([p, s]) => +s === 0 ? S.bids.delete(p) : S.bids.set(p, +s));
+  (d.asks || []).forEach(([p, s]) => +s === 0 ? S.asks.delete(p) : S.asks.set(p, +s));
+
+  renderBook();
+  detectClusters();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TICKER
+═══════════════════════════════════════════════════════════ */
+function onTicker(d) {
+  const lp = +(d.lastPr || d.last || 0);
+  if (lp) {
+    const el = $('lastP');
+    const prev = S.last;
+    S.last = lp;
+    el.textContent = pf(lp, dec(lp));
+    if (prev && lp !== prev) flash(el, lp > prev ? 'fu' : 'fd');
+  }
+  const chg = +(d.change24h || d.priceChangePercent || 0);
+  const ce  = $('chg24');
+  ce.textContent = (chg >= 0 ? '+' : '') + (chg * 100).toFixed(2) + '%';
+  ce.style.color = chg >= 0 ? 'var(--bid)' : 'var(--ask)';
+
+  if (d.high24h) $('h24').textContent = pf(d.high24h, dec(d.high24h));
+  if (d.low24h)  $('l24').textContent = pf(d.low24h,  dec(d.low24h));
+  const vol = +(d.baseVolume || d.vol24h || 0);
+  if (vol) $('vol24').textContent = sz(vol);
+  if (d.fundingRate != null) updFunding(+d.fundingRate);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MARK PRICE
+═══════════════════════════════════════════════════════════ */
+function onMark(d) {
+  const p   = +d.markPrice;
+  const prev = S.mark;
+  S.mark     = p;
+  const el   = $('markPrice');
+  el.textContent = pf(p, dec(p));
+  if (prev && p !== prev) {
+    el.style.textShadow = p > prev
+      ? '0 0 24px rgba(0,232,122,.65)'
+      : '0 0 24px rgba(255,45,91,.65)';
+    setTimeout(() => el.style.textShadow = '0 0 22px rgba(0,136,255,.45)', 280);
+  }
+  if (d.fundingRate != null) updFunding(+d.fundingRate);
+}
+
+function updFunding(r) {
+  const el = $('funding');
+  el.textContent = (r >= 0 ? '+' : '') + (r * 100).toFixed(4) + '%';
+  el.className   = 'fb ' + (r >= 0 ? 'fb-pos' : 'fb-neg');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER ORDER BOOK
+═══════════════════════════════════════════════════════════ */
+function renderBook() {
+  const bArr = [...S.bids].map(([p,s]) => [+p, s]).sort((a,b) => b[0]-a[0]).slice(0, CFG.BOOK_LVL);
+  const aArr = [...S.asks].map(([p,s]) => [+p, s]).sort((a,b) => a[0]-b[0]).slice(0, CFG.BOOK_LVL);
+  if (!bArr.length && !aArr.length) return;
+
+  const allSz = [...bArr.map(b=>b[1]), ...aArr.map(a=>a[1])];
+  const maxSz = Math.max(...allSz);
+  const avg   = allSz.reduce((a,b)=>a+b,0) / allSz.length;
+  $('avgSz').textContent = sz(avg);
+
+  // Cumulative
+  let bc=0, ac=0;
+  const bCum = bArr.map(([,s]) => { bc+=s; return bc; });
+  const aCum = aArr.map(([,s]) => { ac+=s; return ac; });
+  const maxC = Math.max(bCum.at(-1)||0, aCum.at(-1)||0) || 1;
+
+  // Spread / mid
+  if (bArr.length && aArr.length) {
+    const bb = bArr[0][0], ba = aArr[0][0];
+    const sp = ba - bb, md = (bb+ba)/2;
+    const dp = dec(md);
+    $('spreadV').textContent = sp.toFixed(dp);
+    $('spreadP').textContent = `(${(sp/md*100).toFixed(4)}%)`;
+    $('midP').textContent    = pf(md, dp);
+  }
+
+  // Totals / sentiment
+  const tb = bCum.at(-1)||0, ta = aCum.at(-1)||0, tt = tb+ta||1;
+  $('totBid').textContent = sz(tb);
+  $('totAsk').textContent = sz(ta);
+  const bpct = Math.round(tb/tt*100), apct = 100-bpct;
+  $('bidPct').textContent = bpct+'%';
+  $('askPct').textContent = apct+'%';
+  $('sentBid').style.width = bpct+'%';
+  $('sentAsk').style.width = apct+'%';
+  $('baRatio').textContent = ta>0 ? (tb/ta).toFixed(2)+':1' : '—';
+  const imb = ((tb-ta)/tt*100).toFixed(1);
+  $('imbV').textContent  = (imb>0?'+':'')+imb+'%';
+  $('imbV').style.color  = imb>0 ? 'var(--bid)' : 'var(--ask)';
+
+  const th = S.thresh;
+
+  // Build rows helper
+  function row(price, size, cum, side, isCluster) {
+    const cumW = (cum/maxC*100).toFixed(1);
+    const szW  = (size/maxSz*100).toFixed(1);
+    const isBid = side === 'bid';
+    const col  = isBid ? 'var(--bid)' : 'var(--ask)';
+    const dp   = dec(price);
+    return `<div class="dr${isCluster ? (isBid?' dr-cl-bid':' dr-cl-ask') : ''}" title="Price:${price} | Size:${size} | Cum:${cum.toFixed(3)}">
+      <div class="dr-bg ${isBid?'dr-cum-bid':'dr-cum-ask'}" style="width:${cumW}%;"></div>
+      <div class="dr-bg ${isBid?'dr-sz-bid':'dr-sz-ask'}" style="width:${szW}%;"></div>
+      <div class="col-p" style="color:${col};">
+        ${isCluster ? `<span class="ctag ${isBid?'ctag-bid':'ctag-ask'}">${isBid?'🛡FLOOR':'🎯WALL'}</span>` : ''}
+        ${pf(price, dp)}
+      </div>
+      <div class="col-s">${sz(size)}</div>
+      <div class="col-t">${sz(cum)}</div>
+    </div>`;
+  }
+
+  $('askBook').innerHTML = aArr.map(([p,s],i) => row(p,s,aCum[i],'ask', avg>0 && s>avg*th)).join('');
+  $('bidBook').innerHTML = bArr.map(([p,s],i) => row(p,s,bCum[i],'bid', avg>0 && s>avg*th)).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CLUSTER DETECTION
+═══════════════════════════════════════════════════════════ */
+function detectClusters() {
+  const bArr = [...S.bids].map(([p,s])=>({price:+p,size:s,side:'bid'})).sort((a,b)=>b.price-a.price).slice(0,CFG.BOOK_LVL);
+  const aArr = [...S.asks].map(([p,s])=>({price:+p,size:s,side:'ask'})).sort((a,b)=>a.price-b.price).slice(0,CFG.BOOK_LVL);
+  const all  = [...bArr,...aArr];
+  if (!all.length) return;
+
+  const avg = all.reduce((s,l)=>s+l.size,0)/all.length;
+  const th  = avg * S.thresh;
+
+  S.clusters = all
+    .filter(l => l.size > th)
+    .map(l => ({...l, ratio: l.size/avg, label: l.side==='bid'?'Support Cluster':'Resistance Wall'}))
+    .sort((a,b) => b.ratio-a.ratio);
+
+  renderClusters(avg);
+}
+
+function renderClusters(avg) {
+  const c = S.clusters;
+  $('clCnt').textContent  = c.length;
+  $('supCnt').textContent = c.filter(x=>x.side==='bid').length;
+  $('resCnt').textContent = c.filter(x=>x.side==='ask').length;
+
+  const mp = S.mark || S.last || 0;
+  const list = $('clList');
+
+  if (!c.length) {
+    list.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:80px;gap:5px;color:var(--txt3);">
+      <span style="font-size:10px;">No clusters above ×${S.thresh} threshold</span></div>`;
+    return;
+  }
+
+  list.innerHTML = c.map(x => {
+    const isBid = x.side === 'bid';
+    const col   = isBid ? 'var(--bid)' : 'var(--ask)';
+    const dp    = dec(x.price);
+    const diff  = mp ? ((x.price-mp)/mp*100) : 0;
+    const strW  = Math.min(100, (x.ratio/(S.thresh*2))*100).toFixed(0);
+    const arrow = isBid ? '⬆' : '⬇';
+    const hint  = isBid ? 'Price likely hunts UP' : 'Price likely hunts DOWN';
+    return `<div class="ci">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:5px;">
+          <div class="${isBid?'pb':'pa'}" style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;"></div>
+          <span style="font-size:9.5px;font-weight:700;color:${col};">${x.label.toUpperCase()}</span>
+        </div>
+        <span style="font-size:9px;color:var(--txt3);">${x.ratio.toFixed(1)}× avg</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <span style="font-family:var(--font-h);font-size:14px;font-weight:700;color:${col};">$${pf(x.price,dp)}</span>
+        <span style="font-size:10px;color:${diff>=0?'var(--bid)':'var(--ask)'};">${diff>=0?'▲':'▼'} ${Math.abs(diff).toFixed(2)}%</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-bottom:5px;">
+        <span>SIZE <span style="color:${col};">${sz(x.size)}</span></span>
+        <span style="color:${col};">${arrow} ${hint}</span>
+      </div>
+      <div style="height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${strW}%;background:${col};border-radius:2px;transition:width .3s;"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   THRESHOLD CONTROL
+═══════════════════════════════════════════════════════════ */
+function setThresh(v) {
+  S.thresh = +v;
+  $('thVal').textContent = v+'×';
+  $('thLbl').textContent = '×'+v+' AVG';
+  detectClusters();
+  renderBook();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════ */
+loadSyms();
+</script>
 </body>
 </html>
